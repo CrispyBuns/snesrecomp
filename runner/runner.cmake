@@ -151,6 +151,20 @@ endif()
 #
 # Keep discovery and target wiring in one helper so games do not grow their
 # own subtly different SDL package/link rules.
+# ARM64 Linux handhelds default to SDL2's GLES2 renderer. This is opt-out so
+# other ARM64 Linux systems can retain the desktop OpenGL presenter.
+set(_SNESRECOMP_GLES2_DEFAULT OFF)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND
+   CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
+    set(_SNESRECOMP_GLES2_DEFAULT ON)
+endif()
+option(SNESRECOMP_SDL_GLES2_ONLY
+    "Use SDL2 OpenGL ES 2 only (no desktop OpenGL presenter)" ${_SNESRECOMP_GLES2_DEFAULT})
+if(SNESRECOMP_SDL_GLES2_ONLY)
+    set(SNESRECOMP_SDL_BACKEND "SDL2" CACHE STRING
+        "Desktop SDL backend (SDL3 or SDL2)" FORCE)
+endif()
+
 set(SNESRECOMP_SDL_BACKEND "SDL3" CACHE STRING
     "Desktop SDL backend (SDL3 or SDL2)")
 set_property(CACHE SNESRECOMP_SDL_BACKEND PROPERTY STRINGS SDL3 SDL2)
@@ -230,6 +244,7 @@ function(snesrecomp_target_sdl target)
         find_package(SDL2 REQUIRED)
         target_compile_definitions(${target} PRIVATE
             SNESRECOMP_SDL3=0
+            SNESRECOMP_SDL_GLES2_ONLY=$<BOOL:${SNESRECOMP_SDL_GLES2_ONLY}>
             SDL_MAIN_HANDLED)
         if(TARGET SDL2::SDL2)
             target_link_libraries(${target} PRIVATE SDL2::SDL2)
@@ -1332,7 +1347,7 @@ function(snesrecomp_target_desktop_host target)
     else()
         snesrecomp_target_post_mortem(${target})
     endif()
-    if(NOT ANDROID)
+    if(NOT ANDROID AND NOT SNESRECOMP_SDL_GLES2_ONLY)
         snesrecomp_target_opengl(${target})
     endif()
     # Run-ahead and rewind are the host's (snes_runahead.c, snes_rewind.c,
