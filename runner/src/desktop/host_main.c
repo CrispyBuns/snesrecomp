@@ -623,6 +623,7 @@ static char g_renderer_id[kRendererMax][kRendererNameMax];
 static char g_renderer_label[kRendererMax][kRendererNameMax];
 static const char *g_renderer_label_ptr[kRendererMax];
 static int g_renderer_count;
+#if !SNESRECOMP_SDL_GLES2_ONLY
 static const char *RendererPretty(const char *id) {
   if (!strcmp(id, "direct3d"))   return "Direct3D 9";
   if (!strcmp(id, "direct3d11")) return "Direct3D 11";
@@ -633,6 +634,7 @@ static const char *RendererPretty(const char *id) {
   if (!strcmp(id, "software"))   return "Software";
   return id;
 }
+#endif
 static void RendererEnumerate(void) {
   if (g_renderer_count) return;
   snprintf(g_renderer_id[0], kRendererNameMax, "auto");
@@ -669,8 +671,13 @@ static int RendererChoice(void) {
            g_config.output_method == kOutputMethod_SDLSoftware ? "software" : "auto";
   for (int i = 0; i < g_renderer_count; ++i)
     if (!strcmp(g_renderer_id[i], want)) return i;
-  if (strcmp(want, "auto"))
+  if (strcmp(want, "auto")) {
+#if SNESRECOMP_SDL_GLES2_ONLY
+    fprintf(stderr, "[video] Renderer '%s' is unavailable; this build requires SDL2 opengles2\n", want);
+#else
     fprintf(stderr, "[video] Renderer '%s' is not available in this build; using Auto\n", want);
+#endif
+  }
   return 0;
 }
 /* Turn the choice into the presenter (OutputMethod) and, for the SDL
